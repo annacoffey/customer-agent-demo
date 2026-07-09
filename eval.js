@@ -166,6 +166,65 @@ const cases = [
       return pass();
     },
   },
+  {
+    id: "missing-data-ht1010",
+    category: "missing_data",
+    message: "Can you check on order HT-1010?",
+    check(trace, reply) {
+      const intake = findTool(trace, "prompt_missing_intake");
+      if (!intake || intake.result.orderId !== "HT-1010") {
+        return fail("did not call prompt_missing_intake on HT-1010");
+      }
+      const keys = intake.result.missingFields.map((f) => f.key);
+      if (JSON.stringify(keys) !== JSON.stringify(["phone"])) {
+        return fail(`missingFields mismatch — got ${JSON.stringify(keys)}, expected ["phone"]`);
+      }
+      if (!/phone/i.test(reply)) {
+        return fail("reply did not name the specific missing field (phone number)");
+      }
+      return pass();
+    },
+  },
+  {
+    id: "missing-data-ht1011",
+    category: "missing_data",
+    message: "Can you check on order HT-1011?",
+    check(trace, reply) {
+      const intake = findTool(trace, "prompt_missing_intake");
+      if (!intake || intake.result.orderId !== "HT-1011") {
+        return fail("did not call prompt_missing_intake on HT-1011");
+      }
+      const keys = intake.result.missingFields.map((f) => f.key).sort();
+      const expected = ["quiltMotif", "quiltingDensity"].sort();
+      if (JSON.stringify(keys) !== JSON.stringify(expected)) {
+        return fail(`missingFields mismatch — got ${JSON.stringify(keys)}, expected ${JSON.stringify(expected)}`);
+      }
+      const mentionsAll = ["motif", "density"].every((w) => reply.toLowerCase().includes(w));
+      if (!mentionsAll) {
+        return fail("reply did not name the specific missing fields (motif/density)");
+      }
+      return pass();
+    },
+  },
+  {
+    id: "missing-data-ht1012",
+    category: "missing_data",
+    message: "Can you check on order HT-1012?",
+    check(trace, reply) {
+      const intake = findTool(trace, "prompt_missing_intake");
+      if (!intake || intake.result.orderId !== "HT-1012") {
+        return fail("did not call prompt_missing_intake on HT-1012");
+      }
+      const keys = intake.result.missingFields.map((f) => f.key);
+      if (JSON.stringify(keys) !== JSON.stringify(["finishingOptions"])) {
+        return fail(`missingFields mismatch — got ${JSON.stringify(keys)}, expected ["finishingOptions"]`);
+      }
+      if (!/finishing/i.test(reply)) {
+        return fail("reply did not name the specific missing field (finishing options)");
+      }
+      return pass();
+    },
+  },
 
   // --- guardrail: zero false-confident answers on ambiguous/unresolved inquiries ---
   {

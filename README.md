@@ -19,7 +19,7 @@ A CLI chat loop backed by the Claude API with tool use. Three tools stand in for
 - `prompt_missing_intake` — reports exactly which quilt-project intake fields are still empty on a record, so the agent asks for specific gaps instead of a generic "tell me more."
 - `escalate_to_human` — instead of sending real email, logs a clear `ESCALATION` block to the console with a summary and reason.
 
-Mock data lives in [data/orders.json](data/orders.json) — 9 records covering a complete happy-path order, records with missing intake fields, and a deliberate collision (one customer, two active "Baby Quilt" projects under the same email).
+Mock data lives in [data/orders.json](data/orders.json) — 12 records covering complete happy-path orders, several records each missing a different combination of intake fields, and a deliberate collision (one customer, two active "Baby Quilt" projects under the same email).
 
 See the [PRD](#) this was built from for the full scope and the omissions this intentionally does not implement (no RAG, no live CRM, no cross-session memory, no discretionary reasoning).
 
@@ -30,7 +30,7 @@ See the [PRD](#) this was built from for the full scope and the omissions this i
 3. **Ambiguous match** — say your email is `sofia.ramirez@example.com` and your quilt is named `Baby Quilt`. Two matching records; agent asks a disambiguating question (order date) rather than guessing.
 4. **Out of scope** — ask "can I get a discount on my order?" Agent recognizes this is outside its remit and escalates with a summary via email to the team, printed as a console `ESCALATION` block.
 
-Other useful records: `HT-1007` (missing only need-by date), any other `HT-100x` ID for filler/complete orders.
+Other useful records: `HT-1007` (missing only need-by date), `HT-1010` (missing only phone number), `HT-1011` (missing quilt motif + quilting density), `HT-1012` (missing finishing options), any other `HT-100x` ID for filler/complete orders.
 
 ## Measuring success
 
@@ -40,4 +40,4 @@ Success metric: correct resolution rate on order status and missing-data collect
 npm run eval
 ```
 
-[eval.js](eval.js) runs 10 labeled cases through the agent and grades them against the *tool calls* it makes (which order it resolved, which fields `prompt_missing_intake` reported missing, whether `escalate_to_human` fired) rather than parsing its reply text — the tools already return structured, deterministic outcomes, so correctness can be checked exactly instead of eyeballed. It reports three numbers: resolution accuracy, missing-data accuracy, and guardrail violations (cases where the agent answered confidently instead of escalating/asking — this should always be 0).
+[eval.js](eval.js) runs 13 labeled cases through the agent and grades them against the *tool calls* it makes (which order it resolved, which fields `prompt_missing_intake` reported missing, whether `escalate_to_human` fired) rather than parsing its reply text — the tools already return structured, deterministic outcomes, so correctness can be checked exactly instead of eyeballed. It reports three numbers: resolution accuracy, missing-data accuracy, and guardrail violations (cases where the agent answered confidently instead of escalating/asking — this should always be 0).
