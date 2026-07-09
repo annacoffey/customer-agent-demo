@@ -5,7 +5,7 @@ import { dirname, join } from "path";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ORDERS_PATH = join(__dirname, "..", "data", "orders.json");
 
-// In-memory store standing in for the HubSpot CRM. Loaded fresh per process
+// In-memory store standing in for the business CRM. Loaded fresh per process
 // start; writes from prompt_missing_intake mutate this array only (no disk
 // persistence, per PRD).
 let orders = JSON.parse(readFileSync(ORDERS_PATH, "utf-8"));
@@ -132,14 +132,14 @@ export function updateIntakeField({ orderId, fieldKey, value }) {
 
 /**
  * escalate_to_human: logs a clear ESCALATION block to the console in place
- * of sending a real email to info@hereandtherequiltco.com.
+ * of sending a real email to the business's team.
  */
 export function escalateToHuman({ reason, summary, customerContext }) {
   const timestamp = new Date().toISOString();
   const block = [
     "",
     "=".repeat(60),
-    "ESCALATION → info@hereandtherequiltco.com",
+    "ESCALATION → email to the team",
     "=".repeat(60),
     `Time:      ${timestamp}`,
     `Reason:    ${reason}`,

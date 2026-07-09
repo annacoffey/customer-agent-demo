@@ -1,6 +1,6 @@
 # Here & There Quilt Co — Customer Service Agent (Demo)
 
-A narrowly-scoped customer service agent for a longarm quilting studio, built to demonstrate AI product thinking: order lookup, missing-intake-detail collection, and clean escalation for anything out of scope. Mock CRM data stands in for HubSpot — no live integrations, no auth, no deployment.
+A narrowly-scoped customer service agent for a longarm quilting studio, built to demonstrate AI product thinking: order lookup, missing-intake-detail collection, and clean escalation for anything out of scope. Mock CRM data stands in for the business CRM — no live integrations, no auth, no deployment.
 
 ## Setup
 
@@ -28,6 +28,6 @@ See the [PRD](#) this was built from for the full scope and the omissions this i
 1. **Happy path** — enter `HT-1001`. Complete record; agent returns status + delivery estimate in plain language.
 2. **Missing data** — enter `HT-1002`. Missing batting and thread selection; agent asks for those two fields specifically.
 3. **Ambiguous match** — say your email is `sofia.ramirez@example.com` and your quilt is named `Baby Quilt`. Two matching records; agent asks a disambiguating question (order date) rather than guessing.
-4. **Out of scope** — ask "can I get a discount on my order?" Agent recognizes this is outside its remit and escalates to `info@hereandtherequiltco.com` with a summary, printed as a console `ESCALATION` block.
+4. **Out of scope** — ask "can I get a discount on my order?" Agent recognizes this is outside its remit and escalates with a summary via email to the team, printed as a console `ESCALATION` block.
 
 Other useful records: `HT-1007` (missing only need-by date), any other `HT-100x` ID for filler/complete orders.
