@@ -7,7 +7,8 @@
   "scripts": {
     "start": "node index.js",
     "eval": "node eval.js",
-    "audit": "node audit-logs.js"
+    "audit": "node audit-logs.js",
+    "escalations": "node list-escalations.js"
   },
   "license": "MIT",
   "dependencies": {

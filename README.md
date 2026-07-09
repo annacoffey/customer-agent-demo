@@ -53,3 +53,13 @@ npm run audit
 ```
 
 [audit-logs.js](audit-logs.js) runs the same [checkGuardrail](src/guardrails.js) logic `eval.js`'s guardrail cases use — one shared source of truth for both — against every logged session, accounting for multi-turn context (a later turn can legitimately reference candidates a lookup surfaced earlier in the same session). Resolution accuracy and missing-data accuracy still need either a human spot-check of transcripts or a labeled eval like `eval.js`, since there's no automatic ground truth for freeform live conversations.
+
+### Retrieving escalations
+
+Every successful `escalate_to_human` call is logged as part of its turn in `logs/session-<timestamp>.json`, alongside the console `ESCALATION` block printed at the time — but neither gives you one place to see all of them across sessions.
+
+```bash
+npm run escalations
+```
+
+[list-escalations.js](list-escalations.js) scans every session log, pulls out just the successful escalations, and prints them chronologically (time, reason, contact info, customer context, summary, and the message that triggered it) — this is the studio-facing "what needs Sharon's attention" view, built from the same structured tool-call data everything else in this project already relies on.
