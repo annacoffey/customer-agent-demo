@@ -17,7 +17,7 @@ A CLI chat loop backed by the Claude API with tool use. The system prompt gives 
 
 - `lookup_order` — resolves an order by ID, or by email + quilt name fallback. Always returns one of three distinct outcomes (`single_match` / `no_match` / `multiple_matches`) — the model never silently guesses on a multi-match.
 - `prompt_missing_intake` — reports exactly which quilt-project intake fields are still empty on a record, so the agent asks for specific gaps instead of a generic "tell me more."
-- `escalate_to_human` — instead of sending real email, logs a clear `ESCALATION` block to the console with a summary and reason.
+- `escalate_to_human` — instead of sending real email, logs a clear `ESCALATION` block to the console with a summary and reason. Enforced (not just prompted): the tool itself refuses to escalate without an email or phone number on file, returning `missing_contact_info` instead — the agent has to resolve the order (contact info comes free with the record) or ask the customer directly before it can succeed.
 
 Mock data lives in [data/orders.json](data/orders.json) — 12 records covering complete happy-path orders, several records each missing a different combination of intake fields, and a deliberate collision (one customer, two active "Baby Quilt" projects under the same email).
 
@@ -40,7 +40,7 @@ Success metric: correct resolution rate on order status and missing-data collect
 npm run eval
 ```
 
-[eval.js](eval.js) runs 13 labeled cases through the agent and grades them against the *tool calls* it makes (which order it resolved, which fields `prompt_missing_intake` reported missing, whether `escalate_to_human` fired) rather than parsing its reply text — the tools already return structured, deterministic outcomes, so correctness can be checked exactly instead of eyeballed. It reports three numbers: resolution accuracy, missing-data accuracy, and guardrail violations (cases where the agent answered confidently instead of escalating/asking — this should always be 0).
+[eval.js](eval.js) runs 14 labeled cases through the agent and grades them against the *tool calls* it makes (which order it resolved, which fields `prompt_missing_intake` reported missing, whether `escalate_to_human` fired) rather than parsing its reply text — the tools already return structured, deterministic outcomes, so correctness can be checked exactly instead of eyeballed. It reports three numbers: resolution accuracy, missing-data accuracy, and guardrail violations (cases where the agent answered confidently instead of escalating/asking — this should always be 0).
 
 ### Auditing real conversations (live data)
 

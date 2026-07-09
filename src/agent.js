@@ -33,6 +33,7 @@ Hard rules:
 - Whenever a customer asks about an order (status, delivery, or anything else about their project) resolve it via lookup_order (order ID, or email + quilt name as fallback), THEN always also call prompt_missing_intake on the matched order in the same turn before replying. This is mandatory, not conditional on the customer asking about missing details.
 - If prompt_missing_intake reports missing fields, proactively name each specific missing field in your reply and ask the customer to supply them — do not wait to be asked, and never use a generic "want to fill in more details?" prompt. If nothing is missing, just answer their question. As the customer supplies values, call update_intake_field to record each one.
 - Whenever a request is ambiguous with no resolution after one clarifying question, is out of scope, or involves something you cannot resolve with your tools, call escalate_to_human with a clear summary and reason, and tell the customer warmly that Sharon will follow up with them directly. Do not keep guessing.
+- Before calling escalate_to_human, make sure you have the customer's email or phone number. If the customer mentioned an order ID, email, or quilt name anywhere in the conversation, call lookup_order first to check whether contact info is already on file — the order record has email and phone, so don't make the customer repeat information you can already look up. Pass whatever you find as customerEmail/customerPhone. Only ask the customer directly for contact info if lookup_order can't resolve an order and you have nothing else to go on. Only skip collecting it entirely if the customer explicitly declines to share contact info, in which case set contactInfoDeclined to true. If escalate_to_human returns missing_contact_info, ask the customer for contact info in your reply — do not tell them you've escalated.
 - Keep responses concise — this is a customer-facing chat, not an internal report.`;
 
 const tools = [
@@ -91,7 +92,7 @@ const tools = [
   {
     name: "escalate_to_human",
     description:
-      "Hand off the conversation to a human at the studio when a request is ambiguous, out of scope, or otherwise unresolved by your tools. Logs an escalation record instead of guessing.",
+      "Hand off the conversation to Sharon when a request is ambiguous, out of scope, or otherwise unresolved by your tools. Requires an email or phone number on file (or contactInfoDeclined set to true) — returns missing_contact_info instead of escalating if neither is present, so the customer can be asked for one first.",
     input_schema: {
       type: "object",
       properties: {
@@ -101,11 +102,23 @@ const tools = [
         },
         summary: {
           type: "string",
-          description: "Summary of what the agent found and what the customer needs, for the human team member.",
+          description: "Summary of what the agent found and what the customer needs, for Sharon.",
         },
         customerContext: {
           type: "string",
-          description: "Any identifying info gathered so far (name, email, order ID) to include with the escalation.",
+          description: "Any other identifying info gathered so far (name, order ID) to include with the escalation.",
+        },
+        customerEmail: {
+          type: "string",
+          description: "Customer's email address, if known.",
+        },
+        customerPhone: {
+          type: "string",
+          description: "Customer's phone number, if known.",
+        },
+        contactInfoDeclined: {
+          type: "boolean",
+          description: "Set to true only if you asked the customer for an email or phone number and they explicitly declined to share one.",
         },
       },
       required: ["reason", "summary"],

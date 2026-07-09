@@ -139,10 +139,32 @@ export function updateIntakeField({ orderId, fieldKey, value }) {
 
 /**
  * escalate_to_human: logs a clear ESCALATION block to the console in place
- * of sending a real email to Sharon, the studio's longarm quilter.
+ * of sending a real email to Sharon, the studio's longarm quilter. Enforced
+ * here, not just prompted for: refuses to escalate without an email or
+ * phone number on file (or an explicit decline), returning
+ * missing_contact_info so the model has to go collect one and retry.
  */
-export function escalateToHuman({ reason, summary, customerContext }) {
+export function escalateToHuman({
+  reason,
+  summary,
+  customerContext,
+  customerEmail,
+  customerPhone,
+  contactInfoDeclined,
+}) {
+  if (!customerEmail && !customerPhone && !contactInfoDeclined) {
+    return {
+      outcome: "missing_contact_info",
+      message:
+        "No email or phone number on file for this customer. Ask for one before escalating, or set contactInfoDeclined if they explicitly decline to share it.",
+    };
+  }
+
   const timestamp = new Date().toISOString();
+  const contactLine =
+    customerEmail || customerPhone
+      ? [customerEmail, customerPhone].filter(Boolean).join(" / ")
+      : "Declined to share";
   const block = [
     "",
     "=".repeat(60),
@@ -150,6 +172,7 @@ export function escalateToHuman({ reason, summary, customerContext }) {
     "=".repeat(60),
     `Time:      ${timestamp}`,
     `Reason:    ${reason}`,
+    `Contact:   ${contactLine}`,
     `Customer:  ${customerContext || "Not yet identified"}`,
     `Summary:   ${summary}`,
     "=".repeat(60),
