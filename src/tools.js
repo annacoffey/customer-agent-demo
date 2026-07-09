@@ -139,14 +139,14 @@ export function updateIntakeField({ orderId, fieldKey, value }) {
 
 /**
  * escalate_to_human: logs a clear ESCALATION block to the console in place
- * of sending a real email to the business's team.
+ * of sending a real email to Sharon, the studio's longarm quilter.
  */
 export function escalateToHuman({ reason, summary, customerContext }) {
   const timestamp = new Date().toISOString();
   const block = [
     "",
     "=".repeat(60),
-    "ESCALATION → email to the team",
+    "ESCALATION → email to Sharon",
     "=".repeat(60),
     `Time:      ${timestamp}`,
     `Reason:    ${reason}`,

@@ -13,7 +13,7 @@ npm start
 
 ## What this is
 
-A CLI chat loop backed by the Claude API with tool use. Three tools stand in for a CRM connection:
+A CLI chat loop backed by the Claude API with tool use. The system prompt gives the agent a warm, plain-language voice (as if speaking for Sharon, the studio's longarm quilter) and requires plain-text replies with no markdown, since a real chat widget wouldn't render `**bold**` or `- bullets` literally. The underlying scope is unchanged — still just order status, missing-intake collection, and escalation; no FAQ/pricing knowledge base. Three tools stand in for a CRM connection:
 
 - `lookup_order` — resolves an order by ID, or by email + quilt name fallback. Always returns one of three distinct outcomes (`single_match` / `no_match` / `multiple_matches`) — the model never silently guesses on a multi-match.
 - `prompt_missing_intake` — reports exactly which quilt-project intake fields are still empty on a record, so the agent asks for specific gaps instead of a generic "tell me more."
@@ -28,7 +28,7 @@ See the [PRD](#) this was built from for the full scope and the omissions this i
 1. **Happy path** — enter `HT-1001`. Complete record; agent returns status + delivery estimate in plain language.
 2. **Missing data** — enter `HT-1002`. Missing batting and thread selection; agent asks for those two fields specifically.
 3. **Ambiguous match** — say your email is `sofia.ramirez@example.com` and your quilt is named `Baby Quilt`. Two matching records; agent asks a disambiguating question (order date) rather than guessing.
-4. **Out of scope** — ask "can I get a discount on my order?" Agent recognizes this is outside its remit and escalates with a summary via email to the team, printed as a console `ESCALATION` block.
+4. **Out of scope** — ask "can I get a discount on my order?" Agent recognizes this is outside its remit and escalates with a summary via email to Sharon, the studio's longarm quilter, printed as a console `ESCALATION` block.
 
 Other useful records: `HT-1007` (missing only need-by date), `HT-1010` (missing only phone number), `HT-1011` (missing quilt motif + quilting density), `HT-1012` (missing finishing options), any other `HT-100x` ID for filler/complete orders.
 
