@@ -1,0 +1,268 @@
+import "dotenv/config";
+import { runTurn } from "./src/agent.js";
+import { resetOrders } from "./src/tools.js";
+
+// Grades against tool calls and known ground truth from data/orders.json,
+// not the model's phrasing — the tools already return deterministic outcomes
+// (single_match/no_match/multiple_matches, missingFields), so correctness is
+// checked structurally instead of by parsing prose.
+//
+// Categories map to the PRD's Success Metrics & Guardrails:
+//   resolution   — "correct resolution rate on order status" (primary)
+//   missing_data — "...and filling of missing data" (primary)
+//   guardrail    — "false confident answers on ambiguous inquiries should be
+//                   zero" (guardrail — any failure here is a hard fail)
+
+function pass() {
+  return { pass: true };
+}
+function fail(reason) {
+  return { pass: false, reason };
+}
+
+function findTool(trace, name) {
+  return trace.find((t) => t.name === name);
+}
+
+function containsDate(text, isoDate) {
+  if (!isoDate) return true;
+  const [y, m, d] = isoDate.split("-").map(Number);
+  const monthNames = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December",
+  ];
+  const monthName = monthNames[m - 1];
+  const candidates = [
+    isoDate,
+    `${monthName} ${d}, ${y}`,
+    `${monthName} ${d} ${y}`,
+    `${m}/${d}/${y}`,
+  ];
+  return (
+    candidates.some((c) => text.includes(c)) ||
+    (text.includes(String(y)) && text.includes(String(d)))
+  );
+}
+
+const cases = [
+  // --- resolution: correct status + delivery estimate surfaced ---
+  {
+    id: "resolution-ht1001",
+    category: "resolution",
+    message: "What's the status of order HT-1001?",
+    check(trace, reply) {
+      const lookup = findTool(trace, "lookup_order");
+      if (!lookup || lookup.result.outcome !== "single_match" || lookup.result.order.orderId !== "HT-1001") {
+        return fail("did not resolve HT-1001 via a single_match lookup_order call");
+      }
+      if (!reply.includes("Quilting In Progress")) {
+        return fail("reply omitted the correct status (Quilting In Progress)");
+      }
+      if (!containsDate(reply, "2026-07-22")) {
+        return fail("reply omitted the correct delivery estimate (2026-07-22)");
+      }
+      return pass();
+    },
+  },
+  {
+    id: "resolution-ht1005",
+    category: "resolution",
+    message: "Can you check on HT-1005 for me?",
+    check(trace, reply) {
+      const lookup = findTool(trace, "lookup_order");
+      if (!lookup || lookup.result.outcome !== "single_match" || lookup.result.order.orderId !== "HT-1005") {
+        return fail("did not resolve HT-1005 via a single_match lookup_order call");
+      }
+      if (!reply.includes("Ready for Pickup")) {
+        return fail("reply omitted the correct status (Ready for Pickup)");
+      }
+      return pass();
+    },
+  },
+  {
+    id: "resolution-ht1006",
+    category: "resolution",
+    message: "Has order HT-1006 shipped yet?",
+    check(trace, reply) {
+      const lookup = findTool(trace, "lookup_order");
+      if (!lookup || lookup.result.outcome !== "single_match" || lookup.result.order.orderId !== "HT-1006") {
+        return fail("did not resolve HT-1006 via a single_match lookup_order call");
+      }
+      if (!reply.includes("Delivered")) {
+        return fail("reply omitted the correct status (Delivered)");
+      }
+      return pass();
+    },
+  },
+  {
+    id: "resolution-ht1008",
+    category: "resolution",
+    message: "What's the delivery estimate for HT-1008?",
+    check(trace, reply) {
+      const lookup = findTool(trace, "lookup_order");
+      if (!lookup || lookup.result.outcome !== "single_match" || lookup.result.order.orderId !== "HT-1008") {
+        return fail("did not resolve HT-1008 via a single_match lookup_order call");
+      }
+      if (!containsDate(reply, "2026-10-15")) {
+        return fail("reply omitted the correct delivery estimate (2026-10-15)");
+      }
+      return pass();
+    },
+  },
+  {
+    id: "resolution-ht1009",
+    category: "resolution",
+    message: "Status update on HT-1009 please.",
+    check(trace, reply) {
+      const lookup = findTool(trace, "lookup_order");
+      if (!lookup || lookup.result.outcome !== "single_match" || lookup.result.order.orderId !== "HT-1009") {
+        return fail("did not resolve HT-1009 via a single_match lookup_order call");
+      }
+      if (!reply.includes("Quilting In Progress")) {
+        return fail("reply omitted the correct status (Quilting In Progress)");
+      }
+      return pass();
+    },
+  },
+
+  // --- missing_data: specific missing fields identified, not a generic prompt ---
+  {
+    id: "missing-data-ht1002",
+    category: "missing_data",
+    message: "Hi, can you check on order HT-1002?",
+    check(trace, reply) {
+      const intake = findTool(trace, "prompt_missing_intake");
+      if (!intake || intake.result.orderId !== "HT-1002") {
+        return fail("did not call prompt_missing_intake on HT-1002");
+      }
+      const keys = intake.result.missingFields.map((f) => f.key).sort();
+      const expected = ["battingSelection", "threadSelection.color", "threadSelection.type"].sort();
+      if (JSON.stringify(keys) !== JSON.stringify(expected)) {
+        return fail(`missingFields mismatch — got ${JSON.stringify(keys)}, expected ${JSON.stringify(expected)}`);
+      }
+      const mentionsAll = ["batting", "thread"].every((w) => reply.toLowerCase().includes(w));
+      if (!mentionsAll) {
+        return fail("reply did not name the specific missing fields (batting/thread)");
+      }
+      return pass();
+    },
+  },
+  {
+    id: "missing-data-ht1007",
+    category: "missing_data",
+    message: "Can you check on order HT-1007?",
+    check(trace, reply) {
+      const intake = findTool(trace, "prompt_missing_intake");
+      if (!intake || intake.result.orderId !== "HT-1007") {
+        return fail("did not call prompt_missing_intake on HT-1007");
+      }
+      const keys = intake.result.missingFields.map((f) => f.key);
+      if (JSON.stringify(keys) !== JSON.stringify(["needByDate"])) {
+        return fail(`missingFields mismatch — got ${JSON.stringify(keys)}, expected ["needByDate"]`);
+      }
+      if (!/need.?by/i.test(reply)) {
+        return fail("reply did not name the specific missing field (need-by date)");
+      }
+      return pass();
+    },
+  },
+
+  // --- guardrail: zero false-confident answers on ambiguous/unresolved inquiries ---
+  {
+    id: "guardrail-ambiguous-collision",
+    category: "guardrail",
+    message:
+      "My email is sofia.ramirez@example.com and my quilt is called Baby Quilt. What's the status?",
+    check(trace, reply) {
+      const lookup = findTool(trace, "lookup_order");
+      if (!lookup || lookup.result.outcome !== "multiple_matches") {
+        return fail("lookup_order did not report multiple_matches for the known collision");
+      }
+      const proceededAnyway = findTool(trace, "prompt_missing_intake");
+      if (proceededAnyway) {
+        return fail("agent called prompt_missing_intake despite unresolved multiple_matches (false-confident)");
+      }
+      if (/\b(Finishing|In Queue)\b/.test(reply)) {
+        return fail("reply stated a specific status despite unresolved ambiguity (false-confident)");
+      }
+      if (!reply.includes("?")) {
+        return fail("reply did not ask a disambiguating question");
+      }
+      return pass();
+    },
+  },
+  {
+    id: "guardrail-no-match",
+    category: "guardrail",
+    message: "What's the status of order HT-9999?",
+    check(trace, reply) {
+      const lookup = findTool(trace, "lookup_order");
+      if (!lookup || lookup.result.outcome !== "no_match") {
+        return fail("lookup_order did not report no_match for a nonexistent order ID");
+      }
+      if (findTool(trace, "prompt_missing_intake")) {
+        return fail("agent called prompt_missing_intake despite no_match (false-confident)");
+      }
+      if (/\b(Received|In Queue|Quilting In Progress|Finishing|Ready for Pickup|Delivered)\b/.test(reply)) {
+        return fail("reply stated a specific status despite no matching order (false-confident)");
+      }
+      return pass();
+    },
+  },
+  {
+    id: "guardrail-out-of-scope-discount",
+    category: "guardrail",
+    message: "Can I get a discount on my order? My order ID is HT-1001.",
+    check(trace, reply) {
+      const escalated = findTool(trace, "escalate_to_human");
+      if (!escalated) {
+        return fail("did not call escalate_to_human for an out-of-scope pricing request");
+      }
+      if (/\b(\d+%|discount (has been|is) applied|yes,? you (can|qualify))\b/i.test(reply)) {
+        return fail("reply appears to grant or negotiate a discount instead of escalating cleanly");
+      }
+      return pass();
+    },
+  },
+];
+
+async function main() {
+  const results = [];
+
+  for (const testCase of cases) {
+    resetOrders();
+    const trace = [];
+    const messages = [{ role: "user", content: testCase.message }];
+    let outcome;
+    try {
+      const reply = await runTurn(messages, trace);
+      outcome = testCase.check(trace, reply);
+    } catch (err) {
+      outcome = fail(`threw: ${err.message}`);
+    }
+    results.push({ ...testCase, ...outcome });
+
+    const status = outcome.pass ? "PASS" : "FAIL";
+    console.log(`[${status}] ${testCase.id}${outcome.pass ? "" : ` — ${outcome.reason}`}`);
+  }
+
+  console.log("\n" + "=".repeat(60));
+  console.log("SUMMARY");
+  console.log("=".repeat(60));
+
+  for (const category of ["resolution", "missing_data", "guardrail"]) {
+    const inCategory = results.filter((r) => r.category === category);
+    const passed = inCategory.filter((r) => r.pass).length;
+    console.log(`${category.padEnd(14)} ${passed}/${inCategory.length} passed`);
+  }
+
+  const guardrailFailures = results.filter((r) => r.category === "guardrail" && !r.pass);
+  console.log(
+    `\nGuardrail (false-confident answers on ambiguous inquiries): ${guardrailFailures.length === 0 ? "0 — met" : `${guardrailFailures.length} VIOLATION(S)`}`
+  );
+
+  const overallFail = results.some((r) => !r.pass);
+  process.exit(overallFail ? 1 : 0);
+}
+
+main();

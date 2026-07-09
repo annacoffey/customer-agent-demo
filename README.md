@@ -31,3 +31,13 @@ See the [PRD](#) this was built from for the full scope and the omissions this i
 4. **Out of scope** — ask "can I get a discount on my order?" Agent recognizes this is outside its remit and escalates with a summary via email to the team, printed as a console `ESCALATION` block.
 
 Other useful records: `HT-1007` (missing only need-by date), any other `HT-100x` ID for filler/complete orders.
+
+## Measuring success
+
+Success metric: correct resolution rate on order status and missing-data collection. Guardrail: zero false-confident answers on ambiguous or unresolved inquiries — those must escalate or ask a clarifying question, never guess.
+
+```bash
+npm run eval
+```
+
+[eval.js](eval.js) runs 10 labeled cases through the agent and grades them against the *tool calls* it makes (which order it resolved, which fields `prompt_missing_intake` reported missing, whether `escalate_to_human` fired) rather than parsing its reply text — the tools already return structured, deterministic outcomes, so correctness can be checked exactly instead of eyeballed. It reports three numbers: resolution accuracy, missing-data accuracy, and guardrail violations (cases where the agent answered confidently instead of escalating/asking — this should always be 0).

@@ -10,6 +10,13 @@ const ORDERS_PATH = join(__dirname, "..", "data", "orders.json");
 // persistence, per PRD).
 let orders = JSON.parse(readFileSync(ORDERS_PATH, "utf-8"));
 
+// Re-loads the mock CRM from disk, discarding any in-memory writes. Used
+// between eval cases so one test's update_intake_field calls can't leak
+// into the next test's assertions.
+export function resetOrders() {
+  orders = JSON.parse(readFileSync(ORDERS_PATH, "utf-8"));
+}
+
 // Fields the studio's intake form collects from the customer. Excludes
 // deliveryEstimateDate (studio-calculated, not customer-supplied) and
 // specialConsiderations (legitimately optional — "none" is a valid answer).

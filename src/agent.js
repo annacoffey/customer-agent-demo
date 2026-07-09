@@ -124,7 +124,10 @@ function executeTool(name, input) {
   }
 }
 
-export async function runTurn(messages) {
+// toolTrace, if passed, is pushed onto with { name, input, result } for every
+// tool call in this turn — used by eval.js to grade on tool behavior instead
+// of parsing reply text. Return value is unchanged for existing callers.
+export async function runTurn(messages, toolTrace = null) {
   while (true) {
     const response = await client.messages.create({
       model: MODEL,
@@ -144,6 +147,9 @@ export async function runTurn(messages) {
     const toolUseBlocks = response.content.filter((b) => b.type === "tool_use");
     const toolResults = toolUseBlocks.map((block) => {
       const result = executeTool(block.name, block.input);
+      if (toolTrace) {
+        toolTrace.push({ name: block.name, input: block.input, result });
+      }
       return {
         type: "tool_result",
         tool_use_id: block.id,
