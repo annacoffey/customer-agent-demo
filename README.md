@@ -41,3 +41,15 @@ npm run eval
 ```
 
 [eval.js](eval.js) runs 13 labeled cases through the agent and grades them against the *tool calls* it makes (which order it resolved, which fields `prompt_missing_intake` reported missing, whether `escalate_to_human` fired) rather than parsing its reply text — the tools already return structured, deterministic outcomes, so correctness can be checked exactly instead of eyeballed. It reports three numbers: resolution accuracy, missing-data accuracy, and guardrail violations (cases where the agent answered confidently instead of escalating/asking — this should always be 0).
+
+### Auditing real conversations (live data)
+
+`eval.js` only works because it knows the "correct" answer to each scripted message in advance — that doesn't exist for real chat, where you don't know what a customer will ask. The guardrail metric is the exception: it's a structural property (did the agent state something its own tool results don't support, or proceed past an unresolved ambiguity/no-match instead of asking or escalating), so it can be checked on *any* transcript without pre-known ground truth.
+
+Every `npm start` session is logged turn-by-turn to `logs/session-<timestamp>.json` (tool calls included, gitignored — these are runtime artifacts, not fixtures). After a demo or real usage:
+
+```bash
+npm run audit
+```
+
+[audit-logs.js](audit-logs.js) runs the same [checkGuardrail](src/guardrails.js) logic `eval.js`'s guardrail cases use — one shared source of truth for both — against every logged session, accounting for multi-turn context (a later turn can legitimately reference candidates a lookup surfaced earlier in the same session). Resolution accuracy and missing-data accuracy still need either a human spot-check of transcripts or a labeled eval like `eval.js`, since there's no automatic ground truth for freeform live conversations.
